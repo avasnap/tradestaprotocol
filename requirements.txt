@@ -1,0 +1,10 @@
+# TradeSta Verification Suite - Python Dependencies
+
+# Web3 and blockchain interaction
+web3==6.20.0
+eth-abi==5.0.0
+
+# HTTP requests for API calls
+requests==2.31.0
+
+# No database dependencies - uses only public APIs!

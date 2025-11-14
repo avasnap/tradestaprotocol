@@ -1,0 +1,57 @@
+# Cache directory (API responses)
+cache/
+
+# Results directory (verification outputs)
+results/
+
+# Data directory (working data)
+data/
+
+# Working files
+last_checked_block.txt
+new_markets.json
+pagination_test_results.json
+position_manager_abi_analysis.json
+analyze_position_manager_abi.py
+calculate_event_signatures.py
+test_routescan_pagination.py
+
+# Working documentation (keep final versions only)
+ANALYSIS_SUMMARY.txt
+CONTRACT_ANALYSIS_STATUS.md
+CONTRACT_ABI_ANALYSIS.md
+ORDERS_CONTRACT_SUMMARY.md
+VAULT_FINDINGS.md
+VAULT_SECURITY_SUMMARY.md
+VERIFICATION_ROADMAP.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+.pytest_cache/

@@ -1,0 +1,32 @@
+# Docker ignore file for TradeSta verification
+
+# Cache and results (will be regenerated)
+cache/
+results/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Test files from parent directories
+../analysis/
+../har_research/
+test_*.py
+pagination_test_results.json
+PAGINATION_TEST_FINDINGS.md
