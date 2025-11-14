@@ -21,7 +21,7 @@ The Protocol Guide explains (with diagrams):
 
 **What is TradeSta?**
 - Decentralized perpetual futures exchange on Avalanche C-Chain
-- Trade BTC, ETH, AVAX and other assets with leverage (varies by market)
+- Trade BTC, ETH, AVAX and other assets with leverage up to 100x
 - USDC collateral across all markets
 - Keeper-mediated position entry, permissionless liquidations
 
