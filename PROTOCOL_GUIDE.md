@@ -235,7 +235,7 @@ TradeSta includes a perpetual funding rate mechanism designed to balance long/sh
 graph TB
     subgraph "Intended Design"
         LS[Long/Short<br/>Imbalance] -->|Measured| FR[Funding Rate<br/>Calculation]
-        FR -->|k = K0 + BETA × ln(1+skew)| E[Epoch Logged]
+        FR -->|Apply Formula| E[Epoch Logged]
         E -->|Every N hours| UP[Positions Pay/Receive<br/>Funding]
     end
 
@@ -323,58 +323,57 @@ Result: 0 seconds (not configured)
 
 ## Access Control: Hybrid Permission Model
 
-TradeSta uses a sophisticated hybrid model separating position entry (permissioned) from liquidations (permissionless):
+TradeSta uses a sophisticated hybrid model with three distinct access levels:
 
+**Traders (Permissionless):**
 ```mermaid
-graph TB
-    subgraph "Whitelisted Keepers Only"
-        K1[createMarketPosition<br/>Create new positions]
-        K2[executeLimitOrder<br/>Execute limit orders]
-        K3[logEpoch<br/>Update funding rates]
-    end
+graph LR
+    Trader[👤 Trader] -->|✅ Anyone| CreatePos[Open Market Position]
+    Trader -->|✅ Anyone| ClosePos[Close Position]
+    Trader -->|✅ Anyone| CreateOrder[Create Limit Order]
+    Trader -->|✅ Anyone| CancelOrder[Cancel Limit Order]
 
-    subgraph "Permissionless (Anyone)"
-        L1[liquidatePosition<br/>Price-based liquidation]
-        L2[qualifiesForFundingRateLiquidation<br/>Funding liquidation]
-    end
-
-    subgraph "Admin Only"
-        A1[Deploy new markets]
-        A2[Update whitelist]
-        A3[Emergency vault withdrawal]
-    end
-
-    U[Users] -->|Request via| K1
-    U -->|Request via| K2
-
-    Anyone[Anyone] -->|Call directly| L1
-    Anyone -->|Call directly| L2
-
-    Admin[Admin EOA] --> A1
-    Admin --> A2
-    Admin --> A3
-
-    style K1 fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
-    style K2 fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
-    style K3 fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
-    style L1 fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
-    style L2 fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
-    style A1 fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
-    style A2 fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
-    style A3 fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
+    style CreatePos fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style ClosePos fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style CreateOrder fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style CancelOrder fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
 ```
+
+**Keepers (Whitelisted - 2 addresses):**
+```mermaid
+graph LR
+    Keeper[🔑 Keeper<br/>KEEPER_ROLE] -->|🔑 Restricted| ExecOrder[Execute Limit Order]
+    Keeper -->|🔑 Restricted| UpdateFunding[Update Funding Epoch]
+
+    style ExecOrder fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style UpdateFunding fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style Keeper fill:#ffd700,stroke:#333,stroke-width:2px,color:#000
+```
+
+**Liquidators (Permissionless):**
+```mermaid
+graph LR
+    Liquidator[⚡ Liquidator] -->|✅ Anyone| PriceLiq[Price Liquidation]
+    Liquidator -->|✅ Anyone| FundingLiq[Funding Liquidation]
+
+    style PriceLiq fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style FundingLiq fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+```
+
+**Admin (Single EOA):**
+- Deploy new markets via MarketRegistry
+- Update keeper whitelist
+- Emergency vault withdrawal (security concern)
 
 ### Keepers (Whitelisted - 2 Addresses)
 
 **Responsibilities**:
-- **Position Creation**: Only keepers can call `createMarketPosition()`
-- **Limit Order Execution**: Only keepers execute limit orders when triggered
+- **Limit Order Execution**: Only keepers can call `executeLimitOrder()` when trigger price reached
 - **Funding Epochs**: Only keepers can call `logEpoch()` to update funding rates
 
 **Purpose**:
-- Prevents MEV/frontrunning on position entry
-- Controlled access to sensitive operations
-- Single point of coordination for user operations
+- Controlled execution of triggered limit orders
+- Coordinated funding rate updates across protocol
 
 **Trade-off**:
 - Requires trust in keeper infrastructure
