@@ -38,11 +38,11 @@ graph TB
     PM -.->|Queries Rates| FT
     O -.->|Executes to| PM
 
-    style PM fill:#e1f5ff
-    style V fill:#ffe1e1
-    style FT fill:#fff4e1
-    style O fill:#e1ffe1
-    style MR fill:#f0e1ff
+    style PM fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
+    style V fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
+    style FT fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style O fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style MR fill:#f0e1ff,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ### Contract Roles
@@ -177,10 +177,10 @@ graph LR
     FL -->|CollateralSeized| VF[Vault Gets All]
     NC -->|PositionClosed| UR[User Gets<br/>Collateral ± PnL]
 
-    style PL fill:#ff9999
-    style FL fill:#ffcc99
-    style NC fill:#99ff99
-    style P fill:#e1f5ff
+    style PL fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style FL fill:#ffcc99,stroke:#333,stroke-width:2px,color:#000
+    style NC fill:#99ff99,stroke:#333,stroke-width:2px,color:#000
+    style P fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ### 1. Price-Based Liquidation - **ACTIVE**
@@ -245,10 +245,10 @@ graph TB
         EC -.->|No logEpoch calls| UPC[Positions Pay<br/>ZERO Funding]
     end
 
-    style FR fill:#99ff99
-    style FRC fill:#ff9999
-    style UP fill:#99ff99
-    style UPC fill:#ff9999
+    style FR fill:#99ff99,stroke:#333,stroke-width:2px,color:#000
+    style FRC fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style UP fill:#99ff99,stroke:#333,stroke-width:2px,color:#000
+    style UPC fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ### How It Should Work
@@ -354,14 +354,14 @@ graph TB
     Admin --> A2
     Admin --> A3
 
-    style K1 fill:#fff4e1
-    style K2 fill:#fff4e1
-    style K3 fill:#fff4e1
-    style L1 fill:#e1ffe1
-    style L2 fill:#e1ffe1
-    style A1 fill:#ffe1e1
-    style A2 fill:#ffe1e1
-    style A3 fill:#ffe1e1
+    style K1 fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style K2 fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style K3 fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style L1 fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style L2 fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style A1 fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
+    style A2 fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
+    style A3 fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ### Keepers (Whitelisted - 2 Addresses)
