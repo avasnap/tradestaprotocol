@@ -48,27 +48,38 @@ Market (e.g., BTC/USD)
 
 TradeSta has **two separate liquidation mechanisms** (discovered during verification):
 
-**1. Price-Based Liquidation** (`PositionLiquidated` event):
+**1. Price-Based Liquidation** (`PositionLiquidated` event) - **ACTIVE**:
 - Triggered when mark price reaches liquidation price
 - Keeper receives liquidation fee
 - Remaining collateral goes to vault (insurance pool)
+- **In Production**: 2,726 liquidations across all markets
 
-**2. Funding-Based Liquidation** (`CollateralSeized` event):
+**2. Funding-Based Liquidation** (`CollateralSeized` event) - **DISABLED**:
 - Triggered when cumulative funding fees >= remaining collateral
 - Can liquidate **profitable positions** if funding drains collateral
-- Less common (zero occurrences found in historical data)
+- **Current Status**: Effectively disabled - funding rate frozen at **zero**
+- **In Production**: 0 occurrences (mechanism exists but inactive)
 
-### Funding Rates: Balancing Long/Short Interest
+### Funding Rates: Currently Disabled
 
-Funding rates incentivize balance between longs and shorts:
+TradeSta includes a perpetual funding rate mechanism designed to balance long/short interest:
 
 **Formula**: `k = K0 + BETA * ln(1 + skew)` where skew = |longs/shorts - 1|
 
+**How it should work:**
 - **More longs than shorts**: Longs pay shorts (discourages longs, encourages shorts)
 - **More shorts than longs**: Shorts pay longs (discourages shorts, encourages longs)
 - **Balanced**: Minimal funding payments
+- Rates update periodically (epoch-based) via `FundingTracker.logEpoch()` called by keepers
 
-Rates update periodically (epoch-based) via `FundingTracker.logEpoch()` called by keepers.
+**Current Production Status (Critical Finding)**:
+- ❌ **Funding rate: 0** (no funding payments occurring)
+- ❌ **Epoch counter: 2** (only 1 epoch logged since June 2025 deployment)
+- ❌ **Epoch size: 0 seconds** (not configured)
+- ❌ **No `logEpoch()` calls** (keepers not updating rates)
+- ✅ **Effect**: Traders pay/receive **zero funding fees** regardless of market imbalance
+
+This means TradeSta currently operates more like **traditional futures** than perpetual contracts - positions can be held indefinitely without funding cost, and only price-based liquidation is active.
 
 ---
 
@@ -239,11 +250,14 @@ python3 detect_new_markets.py
 
 ## Key Discoveries
 
-### 1. Dual Liquidation Mechanisms
-Found through ABI analysis: TradeSta has **two** liquidation paths, not one.
-- Most protocols: price-based liquidation only
-- TradeSta: price-based **and** funding-based
-- Historical data: 0 funding liquidations (mechanism exists but unused)
+### 1. Funding Rate Mechanism: Built But Disabled
+**Critical Discovery**: TradeSta implements a perpetual funding rate system, but it's **completely inactive**:
+- **Funding rate frozen at zero** since deployment (June 2025)
+- **Only 1 epoch logged** - `logEpoch()` never called by keepers
+- **Epoch size: 0 seconds** - misconfigured or intentionally disabled
+- **Effect**: No funding payments occur - traders pay/receive zero funding fees
+- **Result**: Protocol operates like traditional futures, not perpetual swaps
+- **Why this matters**: Allows extreme long/short imbalances without economic disincentive
 
 ### 2. Four-Contract Market Architecture
 Each market isn't a single contract—it's four coordinated contracts:
@@ -265,11 +279,12 @@ Each market has independent Vault holding USDC collateral:
 - Internal accounting broken (shows zero inflows despite holding USDC)
 - **Verification uses actual USDC balances, not internal counters**
 
-### 5. Funding Rate Mechanism Status
-FundingTracker implementation discovered:
-- Formula: `k = K0 + BETA * ln(1 + skew)`
-- Transparent and verifiable
-- However: only 1 epoch recorded since deployment (mechanism not actively updating)
+### 5. Dual Liquidation Mechanisms (One Active, One Dormant)
+Found through ABI analysis: TradeSta has **two** liquidation paths:
+- **Price-based liquidation** (`PositionLiquidated`): **ACTIVE** - 2,726 occurrences
+- **Funding-based liquidation** (`CollateralSeized`): **DORMANT** - 0 occurrences
+- Funding liquidation cannot occur because funding rate is frozen at zero
+- Only price-based liquidation is operational in production
 
 ---
 

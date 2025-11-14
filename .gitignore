@@ -15,6 +15,7 @@ position_manager_abi_analysis.json
 analyze_position_manager_abi.py
 calculate_event_signatures.py
 test_routescan_pagination.py
+check_epoch1_funding.py
 
 # Working documentation (keep final versions only)
 ANALYSIS_SUMMARY.txt
