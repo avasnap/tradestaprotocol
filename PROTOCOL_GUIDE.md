@@ -81,15 +81,12 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant User
-    participant Keeper
     participant PositionManager
     participant Vault
     participant Pyth as Pyth Oracle
     participant Liquidator
 
-    User->>Keeper: Request: Open Long ETH/USD<br/>10 USDC, 5x leverage
-
-    Keeper->>PositionManager: createMarketPosition()
+    User->>PositionManager: createMarketPosition()<br/>Long ETH/USD, 10 USDC, 5x leverage
     PositionManager->>Pyth: Get current ETH price
     Pyth-->>PositionManager: $2000
     PositionManager->>Vault: Transfer 10 USDC from User
@@ -99,8 +96,7 @@ sequenceDiagram
     Note over User,PositionManager: Position Open (holding)
 
     alt Normal Close
-        User->>Keeper: Request: Close Position
-        Keeper->>PositionManager: closePosition(0xabc...)
+        User->>PositionManager: closePosition(0xabc...)
         PositionManager->>Pyth: Get current ETH price
         Pyth-->>PositionManager: $2100
         PositionManager->>PositionManager: Calculate PnL: +$5 profit
@@ -123,10 +119,10 @@ sequenceDiagram
 - Deposits USDC to their wallet
 - Chooses market (e.g., ETH/USD)
 - Decides: long/short, leverage, collateral amount
-- Sends trade request to whitelisted keeper
+- Approves USDC spending to PositionManager
 
-**2. Keeper Creates Position**
-- Whitelisted keeper calls `PositionManager.createMarketPosition()`
+**2. User Creates Position (Permissionless)**
+- User (or anyone on their behalf) calls `PositionManager.createMarketPosition()`
 - USDC collateral transferred from user to Vault
 - Position recorded with entry price from Pyth oracle
 - Liquidation price calculated based on leverage
@@ -139,8 +135,8 @@ sequenceDiagram
 
 **4. Position Closes** (three ways):
 
-**Normal Close**:
-- User requests close via keeper
+**Normal Close (Permissionless)**:
+- User (or anyone on their behalf) calls `closePosition()`
 - PnL calculated: (exit price - entry price) × position size
 - Collateral ± profit returned to user
 - `PositionClosed` event emitted
@@ -210,12 +206,17 @@ graph LR
 
 **Trigger**: Cumulative funding fees >= remaining collateral
 
+**Who Can Liquidate**: Anyone (permissionless)
+- Any address can call `qualifiesForFundingRateLiquidation()`
+- No liquidation fee for funding liquidations
+- Decentralized system - no single liquidator required
+
 **Unique Feature**: Can liquidate **profitable positions**
 - Even if mark price is favorable, funding can drain collateral
 - Protects protocol from negative funding rate exposure
 
 **What Happens**:
-1. Keeper calls `qualifiesForFundingRateLiquidation()`
+1. Anyone calls `qualifiesForFundingRateLiquidation()`
 2. Contract checks if `funding_owed >= collateral_remaining`
 3. All remaining collateral seized by Vault
 4. `CollateralSeized` event emitted
