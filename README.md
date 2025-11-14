@@ -2,169 +2,205 @@
 
 Independent verification package demonstrating complete understanding of the TradeSta perpetual futures protocol on Avalanche C-Chain.
 
-**✅ No Database Required** - Uses only public blockchain data sources:
-- [Routescan API](https://routescan.io) (indexed blockchain explorer API)
-- Avalanche RPC (public endpoints)
-
-**🙏 Special Thanks**: This verification package relies heavily on **Routescan's indexed blockchain data API**. Without their infrastructure providing fast access to event logs, ABIs, and contract metadata, this comprehensive verification would require running a full archive node and indexing terabytes of blockchain data - making it impractical for independent verification.
-
 ---
 
-## Understanding TradeSta: How Perpetual Futures Work
+## 📖 Understanding TradeSta Protocol
 
-TradeSta is a decentralized perpetual futures exchange where traders can:
-- Open leveraged long/short positions on crypto assets (AVAX, BTC, ETH, etc.)
-- Trade without expiration dates (perpetual contracts)
-- Use USDC as collateral across all markets
-- Access up to 50x leverage on some markets
+**Before diving into verification**, understand how TradeSta works:
 
-### Protocol Architecture: The Four-Contract System
+### **[→ Read the Complete Protocol Guide](PROTOCOL_GUIDE.md)**
 
-Each market in TradeSta consists of **four interconnected contracts**:
+The Protocol Guide explains (with diagrams):
+- **Four-Contract Architecture** - How PositionManager, Orders, Vault, and FundingTracker work together
+- **Position Lifecycle** - From creation through settlement or liquidation
+- **Dual Liquidation System** - Price-based (active) and funding-based (dormant)
+- **Access Control** - Whitelisted keepers vs permissionless liquidators
+- **Funding Mechanism** - How it should work vs current reality (disabled)
 
+### Quick Protocol Overview
+
+**What is TradeSta?**
+- Decentralized perpetual futures exchange on Avalanche C-Chain
+- Trade BTC, ETH, AVAX and other assets with leverage up to 100x
+- USDC collateral across all markets
+- Keeper-mediated position entry, permissionless liquidations
+
+**Key Architecture Insight**: Each market = 4 interconnected contracts
 ```
 Market (e.g., BTC/USD)
-├── PositionManager    → Core trading logic (open, close, liquidate positions)
-├── Orders             → Limit order management (create, execute, cancel orders)
-├── Vault              → USDC collateral storage (holds user funds)
-└── FundingTracker     → Funding rate calculations (balances longs vs shorts)
+├── PositionManager  → Core trading logic
+├── Orders           → Limit order book
+├── Vault            → USDC collateral storage
+└── FundingTracker   → Funding rate calculations (currently inactive)
 ```
 
-**MarketRegistry** is the factory that deploys and coordinates all markets.
-
-### How a Trade Works: Position Lifecycle
-
-1. **User wants to trade**: Deposit USDC, choose market (e.g., ETH/USD), decide long/short and leverage
-2. **Keeper creates position**: Whitelisted keeper calls `PositionManager.createMarketPosition()`
-   - USDC collateral moved from user to Vault
-   - Position recorded with entry price from Pyth oracle
-   - Liquidation price calculated based on leverage
-   - `PositionCreated` event emitted
-3. **Position stays open**: Funding payments accrue based on long/short imbalance
-4. **Position closes** (three ways):
-   - **Normal close**: User closes, PnL settled, collateral ± profit returned (`PositionClosed` event)
-   - **Price liquidation**: Price hits liquidation level, anyone can liquidate (`PositionLiquidated` event)
-   - **Funding liquidation**: Funding fees drain collateral (`CollateralSeized` event)
-
-### Critical Mechanism: Dual Liquidation System
-
-TradeSta has **two separate liquidation mechanisms** (discovered during verification):
-
-**1. Price-Based Liquidation** (`PositionLiquidated` event) - **ACTIVE**:
-- Triggered when mark price reaches liquidation price
-- Keeper receives liquidation fee
-- Remaining collateral goes to vault (insurance pool)
-- **In Production**: 2,726 liquidations across all markets
-
-**2. Funding-Based Liquidation** (`CollateralSeized` event) - **DISABLED**:
-- Triggered when cumulative funding fees >= remaining collateral
-- Can liquidate **profitable positions** if funding drains collateral
-- **Current Status**: Effectively disabled - funding rate frozen at **zero**
-- **In Production**: 0 occurrences (mechanism exists but inactive)
-
-### Funding Rates: Currently Disabled
-
-TradeSta includes a perpetual funding rate mechanism designed to balance long/short interest:
-
-**Formula**: `k = K0 + BETA * ln(1 + skew)` where skew = |longs/shorts - 1|
-
-**How it should work:**
-- **More longs than shorts**: Longs pay shorts (discourages longs, encourages shorts)
-- **More shorts than longs**: Shorts pay longs (discourages shorts, encourages longs)
-- **Balanced**: Minimal funding payments
-- Rates update periodically (epoch-based) via `FundingTracker.logEpoch()` called by keepers
-
-**Current Production Status (Critical Finding)**:
-- ❌ **Funding rate: 0** (no funding payments occurring)
-- ❌ **Epoch counter: 2** (only 1 epoch logged since June 2025 deployment)
-- ❌ **Epoch size: 0 seconds** (not configured)
-- ❌ **No `logEpoch()` calls** (keepers not updating rates)
-- ✅ **Effect**: Traders pay/receive **zero funding fees** regardless of market imbalance
-
-This means TradeSta currently operates more like **traditional futures** than perpetual contracts - positions can be held indefinitely without funding cost, and only price-based liquidation is active.
+**Critical Discovery**: Funding mechanism is **disabled** - protocol operates like traditional futures, not perpetual swaps.
 
 ---
 
-## What This Verification Package Demonstrates
+## 🔍 Key Discoveries
 
-This package proves complete understanding of TradeSta by **reconstructing the entire protocol state** from public blockchain data.
+### 1. Funding Rate Mechanism: Built But Disabled ⚠️
 
-### 1. Protocol Architecture Understanding
+**Critical Finding**: TradeSta implements perpetual funding rates, but the mechanism is **completely inactive**:
 
-**Contract Verification** (`verify_contracts.py`):
-- Identifies all 97 contracts (1 MarketRegistry + 24 markets × 4 contracts each)
-- Confirms factory pattern: MarketRegistry deploys PositionManagers
-- Validates contract verification on Snowtrace
+- ❌ Funding rate frozen at **zero** since deployment (June 2025)
+- ❌ Only **1 epoch logged** - `logEpoch()` never called
+- ❌ Epoch size: **0 seconds** (not configured)
+- ✅ **Effect**: Traders pay/receive zero funding fees regardless of market imbalance
 
-**Associated Contracts** (`verify_associated_contracts_v2.py`):
-- Discovers the four-contract "quartet" for each market
-- Uses MarketRegistry getter functions (`getVaultAddress()`, etc.)
-- Verifies USDC as collateral token across all markets
-- **Proves understanding**: Markets aren't isolated—they're coordinated systems
+**Implication**: Protocol operates like **traditional futures**, not true perpetual swaps. Positions can be held indefinitely without funding cost.
 
-### 2. Governance & Access Control Understanding
+### 2. Dual Liquidation Mechanisms (One Active, One Dormant)
 
-**Governance Verification** (`verify_governance.py`):
-- Identifies admin EOA and its permissions
-- Verifies keeper whitelist (who can execute trades/liquidations)
-- Tracks role changes via `RoleGranted` events
-- **Proves understanding**: TradeSta isn't permissionless—keepers mediate user actions
+| Mechanism | Status | Count | Trigger |
+|-----------|--------|-------|---------|
+| Price-Based (`PositionLiquidated`) | ✅ **ACTIVE** | 2,726 | Mark price reaches liquidation price |
+| Funding-Based (`CollateralSeized`) | ❌ **DORMANT** | 0 | Funding fees >= collateral |
 
-### 3. Trading Mechanics Understanding
+**Why Funding Liquidations Can't Occur**: Funding rate is zero, so fees never accumulate.
 
-**Event Statistics** (`verify_events_enhanced.py`):
-- Tracks complete position lifecycle: created → closed/liquidated
-- Monitors **both** liquidation mechanisms (price + funding)
-- Calculates liquidation rates, closure rates per market
-- **Proves understanding**: Can reconstruct all trading activity from events
+### 3. Hybrid Permission Model
 
-**Sample Data** (AVAX/USD):
+```mermaid
+graph LR
+    subgraph "Whitelisted (2 Keepers)"
+        K1[Position Creation]
+        K2[Limit Order Execution]
+        K3[Funding Epoch Updates]
+    end
+
+    subgraph "Permissionless (Anyone)"
+        L1[Price Liquidations]
+        L2[Funding Liquidations]
+    end
+
+    Users --> K1
+    Users --> K2
+    Anyone --> L1
+    Anyone --> L2
+
+    style K1 fill:#fff4e1
+    style L1 fill:#e1ffe1
 ```
-5,685 positions created
-4,312 normally closed (75.9%)
-1,359 price-liquidated (23.9%)
-0 funding-liquidated (0%)
-14 still open
-```
 
-### 4. Position Accounting Understanding
+**Keepers mediate entry** (prevents MEV), **liquidators are permissionless** (decentralized risk management).
 
-**Lifecycle Verification** (`verify_position_lifecycle.py`):
-- Validates: `created = closed + price_liquidated + funding_liquidated + open`
-- Detects discrepancies (zombie/ghost positions)
-- Compares event history to contract state (`getAllActivePositionIds()`)
-- **Proves understanding**: Events + contract state form complete audit trail
+### 4. Four-Contract Market Architecture
 
-### 5. Risk Mechanics Understanding
+Each market = 4 interconnected contracts:
+- **PositionManager** - Core trading logic
+- **Orders** - Limit order book
+- **Vault** - USDC collateral (security-critical)
+- **FundingTracker** - Funding rates (currently inactive)
 
-**Liquidation Cascade Analysis** (`analyze_liquidation_cascades.py`):
-- Uses `findLiquidatablePricesLong/Short()` to map liquidation levels
-- Identifies "cascade zones" where multiple positions liquidate at same price
-- Calculates distance from current price to cascade zones
-- **Proves understanding**: Protocol has built-in cascade detection functions
+**→ [Protocol Architecture Guide](PROTOCOL_GUIDE.md#protocol-architecture-the-four-contract-system)** with diagrams
 
-**Protocol Solvency** (`verify_protocol_solvency.py`):
-- Verifies vaults can cover all winning positions
-- Calculates: `vault_balance >= locked_collateral + unrealized_profits`
-- Monitors each market's solvency independently
-- **Proves understanding**: Each market's Vault must be independently solvent
+### 5. Vault Security Model
 
-### 6. Market Discovery Understanding
+- Each market has independent Vault holding USDC
+- Must remain solvent: `balance >= locked_collateral + unrealized_profits`
+- ⚠️ Emergency withdrawal function exists (admin-only)
+- ⚠️ Internal accounting broken (shows zero inflows despite holding USDC)
 
-**New Market Detection** (`detect_new_markets.py`):
-- Monitors `MarketCreated` events from MarketRegistry
-- Discovers new markets as they deploy
-- Extracts pricefeed IDs, manager addresses
-- **Proves understanding**: Markets deploy via single event, fully discoverable on-chain
+**Verification uses actual USDC balances**, not internal counters.
 
 ---
 
-## Quick Start
+## Protocol Statistics (November 14, 2025 05:47 UTC)
+
+| Metric | Value |
+|--------|-------|
+| **Markets Deployed** | 24 |
+| **Total Contracts** | 97 (1 registry + 24 markets × 4) |
+| **Positions Created** | 13,551 (all markets) |
+| **Price Liquidations** | 6,276 |
+| **Funding Liquidations** | 0 |
+| **Liquidation Rate** | 46.3% (6,276 of 13,551) |
+| **USDC in Vaults** | $43,825.62 |
+| **Admin EOAs** | 1 |
+| **Whitelisted Keepers** | 2 |
+
+**Top Markets by Activity**:
+- AVAX/USD: 5,687 positions (23.9% liquidation rate)
+- BTC/USD: 1,236 positions (60.0% liquidation rate)
+- ETH/USD: 1,143 positions (54.8% liquidation rate)
+
+---
+
+## 📚 Complete Documentation
+
+### **[→ PROTOCOL_GUIDE.md](PROTOCOL_GUIDE.md)** - How TradeSta Works
+
+**Start here to understand the protocol!** This guide explains:
+- Four-Contract Architecture with interaction diagrams
+- Position Lifecycle from creation to settlement
+- Dual Liquidation System (price vs funding)
+- Access Control (keepers vs liquidators)
+- Funding Mechanism (how it should work vs reality)
+- **5 Mermaid diagrams** visualizing protocol mechanics
+
+**Read this if**: You want to understand how TradeSta actually works before diving into verification
+
+---
+
+### **[→ VERIFICATION_GUIDE.md](VERIFICATION_GUIDE.md)** - Running the Scripts
+
+**Use this to run verifications and understand outputs.** This guide covers:
+- All 13 verification scripts with usage examples
+- What each script verifies and proves
+- Sample outputs and interpretation
+- Performance timings and troubleshooting
+- Integration patterns for CI/CD
+
+**Read this if**: You want to run the verification scripts yourself
+
+---
+
+### **[→ TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md)** - Implementation Deep Dive
+
+**Technical reference for developers.** This guide documents:
+- Data sources (Routescan API vs Avalanche RPC)
+- Verification methodology with flowcharts
+- Complete contract ABI documentation
+- Utility modules (API wrappers, helpers)
+- Performance metrics and optimization
+- Known limitations and production fixes
+
+**Read this if**: You want to understand how verification is implemented or extend the code
+
+---
+
+### **[→ ABI_ANALYSIS_FINDINGS.md](ABI_ANALYSIS_FINDINGS.md)** - Contract ABI Reference
+
+**Comprehensive ABI analysis (2,429 lines).** Documents:
+- All 5 contract types (MarketRegistry, PositionManager, Orders, Vault, FundingTracker)
+- Every function signature and event
+- Access control patterns
+- Verification opportunities per contract
+
+**Read this if**: You need detailed contract interface documentation
+
+---
+
+### **[→ SHIPPING_CHECKLIST.md](SHIPPING_CHECKLIST.md)** - Pre-Flight Verification
+
+**Quality checklist for deployment.** Includes:
+- Testing results for all scripts
+- Known limitations and their impact
+- Package contents inventory
+- Success criteria validation
+
+**Read this if**: You're preparing to deploy or audit the verification package
+
+---
+
+## 🚀 Quick Start
 
 ### Using Docker (Recommended)
 
 ```bash
-# Build the verification image
+# Build verification image
 docker build -t tradesta-verify .
 
 # Run complete verification
@@ -181,280 +217,160 @@ pip install -r requirements.txt
 python3 scripts/verify_all.py              # Core protocol verification
 python3 scripts/verify_all_phase2.py --all # Advanced analytics
 
-# Or run individual verifications
+# Or run individual scripts
 python3 scripts/verify_contracts.py
-python3 scripts/verify_associated_contracts_v2.py
-python3 scripts/verify_governance.py
 python3 scripts/verify_events_enhanced.py --sample 3
-python3 scripts/verify_position_lifecycle.py --sample 3
-python3 scripts/analyze_liquidation_cascades.py --sample 3
-python3 scripts/verify_protocol_solvency.py --sample 3
-
-# Monitor for new markets
-python3 detect_new_markets.py
 ```
 
----
-
-## Verification Scripts Explained
-
-### Core Protocol Verification
-
-**`verify_contracts.py`** - Contract Architecture
-- Discovers all 97 contracts via `MarketCreated` events
-- Verifies factory pattern (MarketRegistry → PositionManagers)
-- Proves: Understanding of deployment structure
-
-**`verify_associated_contracts_v2.py`** - Four-Contract System
-- Gets quartet for each market (PositionManager, Orders, Vault, FundingTracker)
-- Uses `getPositionManagerAddress(pricefeedId)` and similar getters
-- Proves: Understanding of market composition
-
-**`verify_governance.py`** - Access Control
-- Identifies admin and keeper addresses
-- Verifies roles via `hasRole(bytes32, address)`
-- Proves: Understanding of permission system
-
-### Trading Activity Verification
-
-**`verify_events_enhanced.py`** - Complete Position Tracking
-- Tracks all position lifecycle events
-- Monitors both liquidation types (price + funding)
-- Calculates accurate statistics per market
-- Proves: Understanding of dual liquidation mechanism
-
-**`verify_position_lifecycle.py`** - Accounting Audit
-- Validates position accounting: created = settled + open
-- Detects anomalies (zombie/ghost positions)
-- Compares events to contract state
-- Proves: Understanding of complete lifecycle
-
-### Risk & Analytics
-
-**`analyze_liquidation_cascades.py`** - Cascade Risk
-- Maps liquidation price levels
-- Identifies concentration risks
-- Uses built-in cascade functions
-- Proves: Understanding of systemic liquidation risk
-
-**`verify_protocol_solvency.py`** - Fund Safety
-- Checks vault balances vs obligations
-- Calculates unrealized PnL
-- Verifies protocol can pay winners
-- Proves: Understanding of solvency requirements
-
-**`detect_new_markets.py`** - Market Monitoring
-- Watches for `MarketCreated` events
-- Alerts on new market deployments
-- Proves: Understanding of market discovery
+**→ [Full Verification Guide](VERIFICATION_GUIDE.md)** for detailed script documentation
 
 ---
 
-## Key Discoveries
+## What This Package Demonstrates
 
-### 1. Funding Rate Mechanism: Built But Disabled
-**Critical Discovery**: TradeSta implements a perpetual funding rate system, but it's **completely inactive**:
-- **Funding rate frozen at zero** since deployment (June 2025)
-- **Only 1 epoch logged** - `logEpoch()` never called by keepers
-- **Epoch size: 0 seconds** - misconfigured or intentionally disabled
-- **Effect**: No funding payments occur - traders pay/receive zero funding fees
-- **Result**: Protocol operates like traditional futures, not perpetual swaps
-- **Why this matters**: Allows extreme long/short imbalances without economic disincentive
+This verification suite proves complete understanding of TradeSta by **reconstructing the entire protocol state** from public blockchain data alone.
 
-### 2. Four-Contract Market Architecture
-Each market isn't a single contract—it's four coordinated contracts:
-- PositionManager: trading logic
-- Orders: limit order book
-- Vault: USDC storage (security-critical)
-- FundingTracker: funding rate calculations
+### How Verification Works
 
-### 3. Keeper-Mediated Trading Model
-TradeSta uses a hybrid permission model:
+```mermaid
+graph TB
+    subgraph "Data Sources"
+        RS[Routescan API<br/>Events, ABIs]
+        RPC[Avalanche RPC<br/>State Queries]
+    end
 
-**Keepers (Whitelisted)**:
-- Position creation: Only whitelisted keepers can call `createMarketPosition()`
-- Limit order execution: Only keepers execute limit orders
-- Funding epoch updates: Only keepers call `logEpoch()`
-- Prevents MEV/frontrunning on position entry
-- Requires trust in keeper infrastructure
+    subgraph "Verification"
+        V1[Event-Driven<br/>Discovery]
+        V2[Contract State<br/>Queries]
+        V3[Cross-<br/>Verification]
+    end
 
-**Liquidators (Permissionless)**:
-- Anyone can call `liquidatePosition()` when conditions met
-- Liquidator receives liquidation fee as incentive
-- Decentralized liquidation mechanism
-- No whitelist required
+    subgraph "Output"
+        R1[JSON Reports]
+        R2[Statistics]
+        R3[Anomaly Detection]
+    end
 
-### 4. Vault Security Model
-Each market has independent Vault holding USDC collateral:
-- Must be solvent to cover all winning positions
-- Emergency withdrawal function exists (admin-only)
-- Internal accounting broken (shows zero inflows despite holding USDC)
-- **Verification uses actual USDC balances, not internal counters**
+    RS --> V1
+    RPC --> V2
+    V1 --> V3
+    V2 --> V3
+    V3 --> R1
+    V3 --> R2
+    V3 --> R3
 
-### 5. Dual Liquidation Mechanisms (One Active, One Dormant)
-Found through ABI analysis: TradeSta has **two** liquidation paths:
-- **Price-based liquidation** (`PositionLiquidated`): **ACTIVE** - 2,726 occurrences
-- **Funding-based liquidation** (`CollateralSeized`): **DORMANT** - 0 occurrences
-- Funding liquidation cannot occur because funding rate is frozen at zero
-- Only price-based liquidation is operational in production
-
----
-
-## Data Sources & Methodology
-
-### Public Data Sources Only
-
-**Routescan API** (`api.routescan.io`) - **Primary Data Source**:
-- Contract creation info (deployers, timestamps)
-- Contract ABIs and source code
-- Event logs with pagination (10,000 events per page)
-- Rate limits: 120 req/min, 10,000 req/day
-- **Why Routescan**: Indexed blockchain data is **orders of magnitude faster** than querying chain directly
-  - Event log queries: ~1-2 seconds vs hours of RPC calls scanning blocks
-  - ABI retrieval: Instant vs manual extraction from verified source code
-  - Pagination support: Handles large event sets (8,000+ positions) efficiently
-- **Attribution**: This verification package would not be practical without Routescan's indexed API infrastructure
-
-**Avalanche RPC** (`api.avax.network`) - **State Queries**:
-- Contract state reading via `eth_call`
-- Role verification (`hasRole()`)
-- Position queries (`getAllActivePositionIds()`)
-- Block number queries
-- Used for real-time state that Routescan doesn't index (function return values)
-
-### Verification Methodology
-
-1. **Event-Driven Discovery**: Find contracts via events (not hardcoded addresses)
-2. **Contract State Queries**: Read current state via RPC calls
-3. **ABI Analysis**: Understand functions/events by examining contract ABIs
-4. **Cross-Verification**: Compare events to contract state for consistency
-5. **Statistical Analysis**: Calculate rates, distributions from event data
-
-**Caching**: All API responses cached locally for instant re-runs
-
----
-
-## Protocol Statistics (as of November 2025)
-
-**Protocol Scale**:
-- 24 markets deployed
-- 97 total contracts (1 registry + 24 markets × 4 contracts)
-- 8,062 positions created (sample: AVAX, BTC, ETH markets)
-- $43,810.82 USDC held in vaults across all markets
-
-**Market Activity** (sample markets):
-- AVAX/USD: 5,685 positions, 23.9% liquidation rate
-- BTC/USD: 1,235 positions, 60.0% liquidation rate
-- ETH/USD: 1,142 positions, 54.8% liquidation rate
-
-**Liquidation Breakdown**:
-- Price-based liquidations: 2,726 (100% of liquidations)
-- Funding-based liquidations: 0 (0%)
-- Normal closures: 5,320
-- Currently open: 16 positions
-
-**Governance**:
-- 1 admin EOA
-- 2 whitelisted keepers
-- 0 governance changes since deployment
-
----
-
-## Technical Architecture
-
-### Contract ABI Analysis
-
-Complete ABI analysis for all contract types documented in `ABI_ANALYSIS_FINDINGS.md` (2,429 lines):
-
-**MarketRegistry** (Factory):
-- `MarketCreated` event: Discover new markets
-- `getPositionManagerAddress(pricefeedId)`: Get quartet components
-- `collateralTokenAddress()`: Verify USDC
-
-**PositionManager** (Trading):
-- `PositionCreated`, `PositionClosed`, `PositionLiquidated`, `CollateralSeized` events
-- `getAllActivePositionIds()`: Get open positions
-- `calculatePnL(positionId, price)`: Compute unrealized PnL
-- `findLiquidatablePricesLong/Short()`: Cascade detection
-
-**Orders** (Limit Orders):
-- `LimitOrderCreated`, `LimitOrderExecuted` events
-- `getAllLimitOrdersForSpecificUser()`: Enumerate orders
-
-**Vault** (Collateral Storage):
-- USDC balance via `balanceOf(vault)`
-- **Security note**: Emergency withdrawal function exists
-
-**FundingTracker** (Funding Rates):
-- `epochToFundingRates(epoch)`: Historical rate data
-- `getCurrentFundingRate()`: Current rate
-- Formula: `k = K0 + BETA * ln(1 + skew)`
-
-### Utility Modules
-
-**`scripts/utils/routescan_api.py`**:
-- API wrapper with automatic pagination
-- Handles "No records found" gracefully
-- Built-in rate limiting (0.5s between requests)
-- Result caching for performance
-
-**`scripts/utils/web3_helpers.py`**:
-- Web3/RPC helper functions
-- Event signature constants
-- Role hash constants (OpenZeppelin AccessControl)
-- Address utilities
-
----
-
-## Requirements
-
-- Python 3.11+
-- Internet connection (for API access)
-- ~100 MB disk space (for cache)
-
-### Dependencies
-
+    style RS fill:#e1f5ff
+    style V3 fill:#e1ffe1
+    style R1 fill:#99ff99
 ```
-web3==6.20.0
-eth-abi==5.0.0
-requests==2.31.0
-```
+
+### Methodology
+
+1. **Event-Driven Discovery** - Find contracts via `MarketCreated` events (not hardcoded)
+2. **Contract State Queries** - Read current state via RPC `eth_call`
+3. **ABI Analysis** - Understand capabilities by examining contract ABIs
+4. **Cross-Verification** - Compare events to contract state for consistency
+5. **Statistical Analysis** - Calculate rates, distributions, anomalies
+
+**→ [Technical Details](TECHNICAL_DETAILS.md#verification-methodology)** for implementation specifics
+
+### Protocol Understanding Demonstrated
+
+✅ **Architecture** - Four-contract system (PositionManager, Orders, Vault, FundingTracker)
+✅ **Trading Mechanics** - Position lifecycle, dual liquidation system, keeper model
+✅ **Access Control** - Hybrid permission model (whitelisted keepers vs permissionless liquidators)
+✅ **Risk Management** - Liquidation cascades, vault solvency, collateral requirements
+✅ **Event System** - Complete lifecycle tracking, position accounting, audit trail
+✅ **Data Discovery** - Event-driven contract discovery, on-chain verification
+
+---
+
+## Verification Scripts
+
+### Core Protocol (Fast ~1 min)
+
+| Script | What It Verifies | Proves |
+|--------|------------------|--------|
+| `verify_contracts.py` | 97 contracts via events | Factory pattern understanding |
+| `verify_associated_contracts_v2.py` | Four-contract quartets | Market composition knowledge |
+| `verify_governance.py` | Admin & keeper roles | Access control model |
+
+### Trading Activity (Medium ~3 min)
+
+| Script | What It Verifies | Proves |
+|--------|------------------|--------|
+| `verify_events_enhanced.py` | 8,062 positions, dual liquidation | Complete lifecycle tracking |
+| `verify_position_lifecycle.py` | Accounting: created = settled + open | Event + state consistency |
+
+### Risk & Analytics (Slower ~5 min)
+
+| Script | What It Verifies | Proves |
+|--------|------------------|--------|
+| `analyze_liquidation_cascades.py` | Concentration risk at price levels | Cascade risk understanding |
+| `verify_protocol_solvency.py` | Vault balances vs obligations | Solvency model knowledge |
+| `detect_new_markets.py` | New market deployments | Market discovery capability |
+
+**→ [Complete Script Guide](VERIFICATION_GUIDE.md)** with usage examples and output samples
 
 ---
 
 ## Performance
 
-**Verification Times** (with caching):
-- Contract verification: ~30 seconds (24 contracts)
-- Governance verification: ~10 seconds
-- Event statistics (3 markets): ~20 seconds
-- Position lifecycle (3 markets): ~30 seconds
-- Cascade analysis (3 markets): ~40 seconds
-- Protocol solvency (3 markets): ~60 seconds
+| Run Type | Time | API Calls |
+|----------|------|-----------|
+| **First Run** (cold cache) | 10-15 min | ~365 requests |
+| **Cached Run** | 1-2 min | ~0 requests |
+| **Sample (3 markets)** | 3-4 min | ~100 requests |
 
-**Full Suite** (all verifications, all 24 markets): ~10-15 minutes first run, ~1-2 minutes with cache
+**Caching**: All Routescan responses cached locally (ABIs, source code, event logs)
+
+**API Usage**: ~3.6% of daily limit (10,000 req/day)
+
+**→ [Performance Metrics](TECHNICAL_DETAILS.md#performance-metrics)** for detailed breakdown
 
 ---
 
-## Documentation
+## Data Sources
 
-- **`ABI_ANALYSIS_FINDINGS.md`** (2,429 lines): Complete ABI analysis for all 5 contract types
-- **`PHASE2_IMPLEMENTATION_SUMMARY.md`**: Detailed implementation guide
-- **`NEW_MARKET_DISCOVERY.md`**: Market discovery methodology
-- **`PAGINATION_TEST_FINDINGS.md`**: API pagination strategy
-- **`SHIPPING_CHECKLIST.md`**: Pre-flight verification checklist
+**✅ No Database Required** - Uses only public blockchain data sources:
+
+**Routescan API** (`api.routescan.io`) - **Primary Data Source**:
+- Event logs, ABIs, contract source code
+- Indexed data is **orders of magnitude faster** than querying chain directly
+- Event log queries: ~1-2 seconds vs hours of RPC calls
+- **Attribution**: This verification package would not be practical without Routescan's infrastructure
+
+**Avalanche RPC** (`api.avax.network`) - **State Queries**:
+- Contract state reading via `eth_call`
+- Role verification, position queries, balances
+- Used for real-time state that indexers don't provide
+
+**🙏 Special Thanks**: This verification package relies heavily on **Routescan's indexed blockchain data API**. Without their infrastructure providing fast access to event logs, ABIs, and contract metadata, this comprehensive verification would require running a full archive node and indexing terabytes of blockchain data - making it impractical for independent verification.
+
+---
+
+## Requirements
+
+- **Python**: 3.11+
+- **Dependencies**: `web3`, `eth-abi`, `requests`
+- **Disk Space**: ~100 MB (for cache)
+- **Network**: Internet connection (Routescan API + Avalanche RPC)
+
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
 ## Key Addresses
 
-**MarketRegistry**: `0x60f16b09a15f0c3210b40a735b19a6baf235dd18`
-**Admin EOA**: `0xe28bd6b3991f3e4b54af24ea2f1ee869c8044a93`
-
-**Top Markets** (by volume):
-- AVAX/USD: `0x8d07fa9ac8b4bf833f099fb24971d2a808874c25`
-- BTC/USD: `0x7da6e6d1b3582a2348fa76b3fe3b5e88d95281e7`
-- ETH/USD: `0x5bd078689c358ca2c64daff8761dbf8cfddfc51f`
+| Component | Address |
+|-----------|---------|
+| **MarketRegistry** | `0x60f16b09a15f0c3210b40a735b19a6baf235dd18` |
+| **Admin EOA** | `0xe28bd6b3991f3e4b54af24ea2f1ee869c8044a93` |
+| **AVAX/USD Market** | `0x8d07fa9ac8b4bf833f099fb24971d2a808874c25` |
+| **BTC/USD Market** | `0x7da6e6d1b3582a2348fa76b3fe3b5e88d95281e7` |
+| **ETH/USD Market** | `0x5bd078689c358ca2c64daff8761dbf8cfddfc51f` |
 
 **Verification Links**:
 - [MarketRegistry on Snowtrace](https://snowtrace.io/address/0x60f16b09a15f0c3210b40a735b19a6baf235dd18)
@@ -472,18 +388,18 @@ MIT License - Copyright (c) 2025 Avasnap
 
 This verification package demonstrates complete understanding of:
 
-✅ **Protocol Architecture**: Four-contract system, factory pattern, market coordination
-✅ **Trading Mechanics**: Position lifecycle, dual liquidation system, keeper model
-✅ **Funding Rates**: Skew-based formula, epoch system, long/short balancing
-✅ **Risk Management**: Liquidation cascades, vault solvency, collateral requirements
-✅ **Access Control**: Admin roles, keeper whitelist, permission structure
-✅ **Event System**: Complete lifecycle tracking, position accounting, audit trail
-✅ **Data Discovery**: Event-driven contract discovery, on-chain verification
+✅ **Protocol Architecture** - Four-contract system, factory pattern, market coordination
+✅ **Trading Mechanics** - Position lifecycle, dual liquidation system, keeper model
+✅ **Funding Rates** - Skew-based formula, epoch system, long/short balancing (currently inactive)
+✅ **Risk Management** - Liquidation cascades, vault solvency, collateral requirements
+✅ **Access Control** - Admin roles, keeper whitelist, hybrid permission structure
+✅ **Event System** - Complete lifecycle tracking, position accounting, audit trail
+✅ **Data Discovery** - Event-driven contract discovery, on-chain verification
 
 **This isn't just verification—it's a blueprint for how TradeSta actually works.**
 
 ---
 
-**Last Updated**: November 2025
+**Last Updated**: November 14, 2025 05:47 UTC
 **Blockchain**: Avalanche C-Chain (43114)
-**Block Range**: 63,000,000 - latest
+**Block Range**: 63,000,000 - 71,932,816

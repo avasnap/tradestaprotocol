@@ -1,8 +1,8 @@
 # TradeSta Verification Package - Shipping Checklist
 
 **Status**: ✅ READY TO SHIP
-**Date**: November 13, 2025
-**Version**: 2.0
+**Date**: November 14, 2025
+**Version**: 2.1
 
 ---
 
@@ -44,13 +44,14 @@
 2. ✅ `scripts/verify_position_lifecycle.py` - Position accounting audit
 3. ✅ `scripts/analyze_liquidation_cascades.py` - Risk zone analysis
 4. ✅ `scripts/verify_protocol_solvency.py` - Fund safety verification
-5. ✅ `scripts/verify_all_phase2.py` - Advanced verification master script
+5. ✅ `scripts/verify_leverage.py` - Leverage limits and usage verification
+6. ✅ `scripts/verify_all_phase2.py` - Advanced verification master script
 
 #### Utilities
 1. ✅ `scripts/utils/routescan_api.py` - API wrapper with pagination
 2. ✅ `scripts/utils/web3_helpers.py` - Web3 helpers and constants
 
-**Total**: 13 verification scripts + 2 utility modules
+**Total**: 14 verification scripts + 2 utility modules
 
 ### Testing Results
 
@@ -81,6 +82,12 @@
 - ✅ 4 open positions verified
 - ✅ Protocol can cover all winning positions
 
+**verify_leverage.py**:
+- ✅ All 24 markets: 100x configured maximum leverage
+- ✅ 13,551 positions analyzed across all markets
+- ✅ No violations detected (all positions respect limits)
+- ✅ Queries MarketRegistry contracts + analyzes event usage
+
 ### Known Limitations (Documented)
 
 1. **Placeholder Prices**: Cascade and solvency scripts use estimated prices
@@ -106,6 +113,8 @@
 3. ✅ **Broken Vault Accounting**: inflows() shows zero despite holding USDC
 4. ✅ **Funding Rate Stalled**: Only 1 epoch since deployment
 5. ✅ **Zero Funding Liquidations**: Mechanism never triggered (healthy sign)
+6. ✅ **100x Leverage Confirmed**: All 24 markets configured for 100x max leverage
+7. ✅ **No Leverage Violations**: All 13,551 positions respect configured limits
 
 ---
 
@@ -113,8 +122,8 @@
 
 ### What's Included
 
-**Code** (1,973 lines):
-- 4 advanced verification scripts
+**Code**:
+- 5 advanced verification scripts
 - 1 master runner script
 - Fixed API error handling
 - No deprecation warnings
@@ -203,6 +212,7 @@ verification/
 │   ├── verify_position_lifecycle.py   # Lifecycle audit
 │   ├── analyze_liquidation_cascades.py # Cascade risk
 │   ├── verify_protocol_solvency.py    # Solvency check
+│   ├── verify_leverage.py             # Leverage limits verification
 │   │
 │   └── utils/
 │       ├── routescan_api.py           # API wrapper
@@ -248,8 +258,8 @@ verification/
 ## 📊 Metrics
 
 **Code Metrics**:
-- Advanced verification code: 1,973 lines (4 scripts)
-- Total verification scripts: 13
+- Advanced verification code: ~2,200 lines (5 scripts)
+- Total verification scripts: 14
 - Utility modules: 2
 - Documentation: 4,185+ lines
 
@@ -283,5 +293,5 @@ verification/
 ---
 
 **Package Prepared By**: Claude Code
-**Date**: November 13, 2025
-**Version**: 2.0
+**Date**: November 14, 2025
+**Version**: 2.1
