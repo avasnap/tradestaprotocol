@@ -62,51 +62,42 @@ Market (e.g., BTC/USD)
 
 ### 3. Hybrid Permission Model
 
+**Traders (Permissionless):**
 ```mermaid
-graph TB
-    subgraph Actors
-        Trader[👤 Trader]
-        Keeper[🔑 Keeper<br/>Whitelisted]
-        Anyone[🌐 Anyone]
-    end
-
-    subgraph "Operations"
-        direction TB
-        CreatePos[Open Market Position]
-        ClosePos[Close Position]
-        CreateOrder[Create Limit Order]
-        CancelOrder[Cancel Limit Order]
-        ExecOrder[Execute Limit Order]
-        UpdateFunding[Update Funding Epoch]
-        PriceLiq[Price Liquidation]
-        FundingLiq[Funding Liquidation]
-    end
-
-    Trader -->|✅ Permissionless| CreatePos
-    Trader -->|✅ Permissionless| ClosePos
-    Trader -->|✅ Permissionless| CreateOrder
-    Trader -->|✅ Permissionless| CancelOrder
-
-    Keeper -->|🔑 KEEPER_ROLE required| ExecOrder
-    Keeper -->|🔑 KEEPER_ROLE required| UpdateFunding
-
-    Anyone -->|✅ Permissionless| PriceLiq
-    Anyone -->|✅ Permissionless| FundingLiq
+graph LR
+    Trader[👤 Trader] -->|✅ Anyone| CreatePos[Open Market Position]
+    Trader -->|✅ Anyone| ClosePos[Close Position]
+    Trader -->|✅ Anyone| CreateOrder[Create Limit Order]
+    Trader -->|✅ Anyone| CancelOrder[Cancel Limit Order]
 
     style CreatePos fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
     style ClosePos fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
     style CreateOrder fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
     style CancelOrder fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+```
+
+**Keepers (Whitelisted - 2 addresses):**
+```mermaid
+graph LR
+    Keeper[🔑 Keeper<br/>KEEPER_ROLE] -->|🔑 Restricted| ExecOrder[Execute Limit Order]
+    Keeper -->|🔑 Restricted| UpdateFunding[Update Funding Epoch]
+
     style ExecOrder fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
     style UpdateFunding fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
-    style PriceLiq fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
-    style FundingLiq fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
     style Keeper fill:#ffd700,stroke:#333,stroke-width:2px,color:#000
 ```
 
-**Keepers only execute limit orders** and update funding epochs. **Everything else is permissionless**.
+**Liquidators (Permissionless):**
+```mermaid
+graph LR
+    Liquidator[⚡ Liquidator] -->|✅ Anyone| PriceLiq[Price Liquidation]
+    Liquidator -->|✅ Anyone| FundingLiq[Funding Liquidation]
 
-**Key Insight**: Traders can create/cancel limit orders and open/close market positions directly. Keepers act as order matchers - they execute limit orders when price conditions are met.
+    style PriceLiq fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style FundingLiq fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+```
+
+**Key Insight**: Only 2 operations require keeper role - limit order execution and funding updates. All trading, order management, and liquidations are permissionless.
 
 ### 4. Four-Contract Market Architecture
 
