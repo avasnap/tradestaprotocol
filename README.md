@@ -107,22 +107,23 @@ Each market = 4 interconnected contracts:
 
 ---
 
-## Protocol Statistics (November 2025)
+## Protocol Statistics (November 14, 2025 05:47 UTC)
 
 | Metric | Value |
 |--------|-------|
 | **Markets Deployed** | 24 |
 | **Total Contracts** | 97 (1 registry + 24 markets × 4) |
-| **Positions Created** | 8,062 (sample markets) |
-| **USDC in Vaults** | $43,810.82 |
-| **Liquidation Rate** | 33.8% (2,726 of 8,062) |
+| **Positions Created** | 13,551 (all markets) |
+| **Price Liquidations** | 6,276 |
+| **Funding Liquidations** | 0 |
+| **Liquidation Rate** | 46.3% (6,276 of 13,551) |
 | **Admin EOAs** | 1 |
 | **Whitelisted Keepers** | 2 |
 
 **Top Markets by Activity**:
-- AVAX/USD: 5,685 positions (23.9% liquidation rate)
-- BTC/USD: 1,235 positions (60.0% liquidation rate)
-- ETH/USD: 1,142 positions (54.8% liquidation rate)
+- AVAX/USD: 5,687 positions (23.9% liquidation rate)
+- BTC/USD: 1,236 positions (60.0% liquidation rate)
+- ETH/USD: 1,143 positions (54.8% liquidation rate)
 
 ---
 
@@ -398,6 +399,6 @@ This verification package demonstrates complete understanding of:
 
 ---
 
-**Last Updated**: November 2025
+**Last Updated**: November 14, 2025 05:47 UTC
 **Blockchain**: Avalanche C-Chain (43114)
-**Block Range**: 63,000,000 - latest
+**Block Range**: 63,000,000 - 71,932,816

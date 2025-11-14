@@ -201,9 +201,9 @@ graph LR
 4. Remaining collateral transferred to Vault (insurance pool)
 5. `PositionLiquidated` event emitted with liquidator address
 
-**Production Status**: ✅ **ACTIVE**
-- 2,726 liquidations across all markets
-- Liquidation rate: ~33.8% of positions
+**Production Status**: ✅ **ACTIVE** (as of November 14, 2025)
+- 6,276 liquidations across all 24 markets
+- Liquidation rate: 46.3% of positions
 - Functioning as designed
 
 ### 2. Funding-Based Liquidation - **DISABLED**

@@ -18,5 +18,7 @@ COPY scripts/ scripts/
 # Create directories for results and cache
 RUN mkdir -p results cache
 
-# Set default command
+# Default command runs basic verification (sample of 3 markets)
+# For full verification on all markets, run:
+#   docker run tradesta-verify python3 scripts/verify_all_phase2.py --all
 CMD ["python3", "scripts/verify_all.py"]
