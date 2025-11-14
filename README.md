@@ -93,15 +93,15 @@ graph TB
     Anyone -->|✅ Permissionless| PriceLiq
     Anyone -->|✅ Permissionless| FundingLiq
 
-    style CreatePos fill:#e1ffe1
-    style ClosePos fill:#e1ffe1
-    style CreateOrder fill:#e1ffe1
-    style CancelOrder fill:#e1ffe1
-    style ExecOrder fill:#fff4e1
-    style UpdateFunding fill:#fff4e1
-    style PriceLiq fill:#e1ffe1
-    style FundingLiq fill:#e1ffe1
-    style Keeper fill:#ffd700
+    style CreatePos fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style ClosePos fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style CreateOrder fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style CancelOrder fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style ExecOrder fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style UpdateFunding fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style PriceLiq fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style FundingLiq fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
+    style Keeper fill:#ffd700,stroke:#333,stroke-width:2px,color:#000
 ```
 
 **Keepers only execute limit orders** and update funding epochs. **Everything else is permissionless**.
