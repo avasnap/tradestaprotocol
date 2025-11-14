@@ -43,7 +43,7 @@ Market (e.g., BTC/USD)
 3. **Position stays open**: Funding payments accrue based on long/short imbalance
 4. **Position closes** (three ways):
    - **Normal close**: User closes, PnL settled, collateral ± profit returned (`PositionClosed` event)
-   - **Price liquidation**: Price hits liquidation level, keeper liquidates (`PositionLiquidated` event)
+   - **Price liquidation**: Price hits liquidation level, anyone can liquidate (`PositionLiquidated` event)
    - **Funding liquidation**: Funding fees drain collateral (`CollateralSeized` event)
 
 ### Critical Mechanism: Dual Liquidation System
@@ -268,11 +268,21 @@ Each market isn't a single contract—it's four coordinated contracts:
 - Vault: USDC storage (security-critical)
 - FundingTracker: funding rate calculations
 
-### 3. Keeper-Mediated Trading
-Users don't directly call contract functions. Instead:
-- Whitelisted keepers execute on behalf of users
-- Prevents MEV/frontrunning attacks
+### 3. Keeper-Mediated Trading Model
+TradeSta uses a hybrid permission model:
+
+**Keepers (Whitelisted)**:
+- Position creation: Only whitelisted keepers can call `createMarketPosition()`
+- Limit order execution: Only keepers execute limit orders
+- Funding epoch updates: Only keepers call `logEpoch()`
+- Prevents MEV/frontrunning on position entry
 - Requires trust in keeper infrastructure
+
+**Liquidators (Permissionless)**:
+- Anyone can call `liquidatePosition()` when conditions met
+- Liquidator receives liquidation fee as incentive
+- Decentralized liquidation mechanism
+- No whitelist required
 
 ### 4. Vault Security Model
 Each market has independent Vault holding USDC collateral:
