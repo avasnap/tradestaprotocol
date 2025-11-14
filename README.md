@@ -117,6 +117,7 @@ Each market = 4 interconnected contracts:
 | **Price Liquidations** | 6,276 |
 | **Funding Liquidations** | 0 |
 | **Liquidation Rate** | 46.3% (6,276 of 13,551) |
+| **USDC in Vaults** | $43,825.62 |
 | **Admin EOAs** | 1 |
 | **Whitelisted Keepers** | 2 |
 
