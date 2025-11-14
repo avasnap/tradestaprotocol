@@ -231,23 +231,29 @@ graph LR
 
 TradeSta includes a perpetual funding rate mechanism designed to balance long/short interest:
 
+**Intended Design:**
 ```mermaid
 graph TB
-    subgraph "Intended Design"
-        LS[Long/Short<br/>Imbalance] -->|Measured| FR[Funding Rate<br/>Calculation]
-        FR -->|Apply Formula| E[Epoch Logged]
-        E -->|Every N hours| UP[Positions Pay/Receive<br/>Funding]
-    end
+    LS[Long/Short<br/>Imbalance] -->|Measured| FR[Funding Rate<br/>Calculation]
+    FR -->|Apply Formula| E[Epoch Logged]
+    E -->|Every N hours| UP[Positions Pay/Receive<br/>Funding]
 
-    subgraph "Current Reality ❌"
-        LSC[Long/Short<br/>Imbalance] -.->|NOT measured| FRC[Funding Rate<br/>= 0]
-        FRC -.->|Only 1 epoch<br/>since June 2025| EC[Epoch Stalled]
-        EC -.->|No logEpoch calls| UPC[Positions Pay<br/>ZERO Funding]
-    end
-
+    style LS fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
     style FR fill:#99ff99,stroke:#333,stroke-width:2px,color:#000
-    style FRC fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style E fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
     style UP fill:#99ff99,stroke:#333,stroke-width:2px,color:#000
+```
+
+**Current Reality ❌:**
+```mermaid
+graph TB
+    LSC[Long/Short<br/>Imbalance] -.->|NOT measured| FRC[Funding Rate<br/>= 0]
+    FRC -.->|Only 1 epoch<br/>since June 2025| EC[Epoch Stalled]
+    EC -.->|No logEpoch calls| UPC[Positions Pay<br/>ZERO Funding]
+
+    style LSC fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
+    style FRC fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style EC fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
     style UPC fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
 ```
 
