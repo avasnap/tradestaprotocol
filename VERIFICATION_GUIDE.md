@@ -34,14 +34,14 @@ graph TB
     T2 --> R1
     R1 --> R2
 
-    style C1 fill:#e1f5ff
-    style C2 fill:#e1f5ff
-    style C3 fill:#e1f5ff
-    style T1 fill:#ffe1e1
-    style T2 fill:#ffe1e1
-    style R1 fill:#fff4e1
-    style R2 fill:#fff4e1
-    style R3 fill:#e1ffe1
+    style C1 fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
+    style C2 fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
+    style C3 fill:#e1f5ff,stroke:#333,stroke-width:2px,color:#000
+    style T1 fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
+    style T2 fill:#ffe1e1,stroke:#333,stroke-width:2px,color:#000
+    style R1 fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style R2 fill:#fff4e1,stroke:#333,stroke-width:2px,color:#000
+    style R3 fill:#e1ffe1,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ---
@@ -515,7 +515,7 @@ graph LR
     K6 --> P
     K7 --> P
 
-    style P fill:#99ff99
+    style P fill:#99ff99,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ---
