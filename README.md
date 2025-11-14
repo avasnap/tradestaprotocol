@@ -67,27 +67,31 @@ graph TB
     subgraph Actors
         Trader[👤 Trader]
         Keeper[🔑 Keeper<br/>Whitelisted]
-        Liquidator[⚡ Liquidator<br/>Anyone]
+        Anyone[🌐 Anyone]
     end
 
     subgraph "Operations"
         direction TB
-        CreatePos[Open Position]
+        CreatePos[Open Position<br/>Market Order]
         ExecOrder[Execute Limit Order]
         UpdateFunding[Update Funding Epoch]
+        ClosePos[Close Position]
         PriceLiq[Price Liquidation]
         FundingLiq[Funding Liquidation]
     end
 
+    Trader -->|✅ Permissionless| CreatePos
+    Trader -->|✅ Permissionless| ClosePos
     Trader -.requests.-> Keeper
-    Keeper -->|✅ KEEPER_ROLE required| CreatePos
+
     Keeper -->|✅ KEEPER_ROLE required| ExecOrder
     Keeper -->|✅ KEEPER_ROLE required| UpdateFunding
 
-    Liquidator -->|✅ No role required| PriceLiq
-    Liquidator -->|✅ No role required| FundingLiq
+    Anyone -->|✅ No role required| PriceLiq
+    Anyone -->|✅ No role required| FundingLiq
 
-    style CreatePos fill:#fff4e1
+    style CreatePos fill:#e1ffe1
+    style ClosePos fill:#e1ffe1
     style ExecOrder fill:#fff4e1
     style UpdateFunding fill:#fff4e1
     style PriceLiq fill:#e1ffe1
@@ -95,9 +99,9 @@ graph TB
     style Keeper fill:#ffd700
 ```
 
-**Entry is mediated** (keepers prevent MEV), **liquidations are permissionless** (decentralized risk management).
+**Keepers only needed for limit orders** and funding updates. **Market orders and liquidations are permissionless**.
 
-**Key Insight**: Traders can't directly open positions - they must go through whitelisted keepers. But anyone can liquidate risky positions for profit.
+**Key Insight**: Anyone can open/close market order positions directly. Keepers only execute limit orders and update funding epochs.
 
 ### 4. Four-Contract Market Architecture
 
