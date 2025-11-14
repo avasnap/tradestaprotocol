@@ -72,26 +72,31 @@ graph TB
 
     subgraph "Operations"
         direction TB
-        CreatePos[Open Position<br/>Market Order]
+        CreatePos[Open Market Position]
+        ClosePos[Close Position]
+        CreateOrder[Create Limit Order]
+        CancelOrder[Cancel Limit Order]
         ExecOrder[Execute Limit Order]
         UpdateFunding[Update Funding Epoch]
-        ClosePos[Close Position]
         PriceLiq[Price Liquidation]
         FundingLiq[Funding Liquidation]
     end
 
     Trader -->|✅ Permissionless| CreatePos
     Trader -->|✅ Permissionless| ClosePos
-    Trader -.requests.-> Keeper
+    Trader -->|✅ Permissionless| CreateOrder
+    Trader -->|✅ Permissionless| CancelOrder
 
-    Keeper -->|✅ KEEPER_ROLE required| ExecOrder
-    Keeper -->|✅ KEEPER_ROLE required| UpdateFunding
+    Keeper -->|🔑 KEEPER_ROLE required| ExecOrder
+    Keeper -->|🔑 KEEPER_ROLE required| UpdateFunding
 
-    Anyone -->|✅ No role required| PriceLiq
-    Anyone -->|✅ No role required| FundingLiq
+    Anyone -->|✅ Permissionless| PriceLiq
+    Anyone -->|✅ Permissionless| FundingLiq
 
     style CreatePos fill:#e1ffe1
     style ClosePos fill:#e1ffe1
+    style CreateOrder fill:#e1ffe1
+    style CancelOrder fill:#e1ffe1
     style ExecOrder fill:#fff4e1
     style UpdateFunding fill:#fff4e1
     style PriceLiq fill:#e1ffe1
@@ -99,9 +104,9 @@ graph TB
     style Keeper fill:#ffd700
 ```
 
-**Keepers only needed for limit orders** and funding updates. **Market orders and liquidations are permissionless**.
+**Keepers only execute limit orders** and update funding epochs. **Everything else is permissionless**.
 
-**Key Insight**: Anyone can open/close market order positions directly. Keepers only execute limit orders and update funding epochs.
+**Key Insight**: Traders can create/cancel limit orders and open/close market positions directly. Keepers act as order matchers - they execute limit orders when price conditions are met.
 
 ### 4. Four-Contract Market Architecture
 
