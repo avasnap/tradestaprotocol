@@ -3,8 +3,10 @@
 Independent verification package demonstrating complete understanding of the TradeSta perpetual futures protocol on Avalanche C-Chain.
 
 **✅ No Database Required** - Uses only public blockchain data sources:
-- Routescan API (Snowtrace/RouteScan)
+- [Routescan API](https://routescan.io) (indexed blockchain explorer API)
 - Avalanche RPC (public endpoints)
+
+**🙏 Special Thanks**: This verification package relies heavily on **Routescan's indexed blockchain data API**. Without their infrastructure providing fast access to event logs, ABIs, and contract metadata, this comprehensive verification would require running a full archive node and indexing terabytes of blockchain data - making it impractical for independent verification.
 
 ---
 
@@ -292,17 +294,23 @@ Found through ABI analysis: TradeSta has **two** liquidation paths:
 
 ### Public Data Sources Only
 
-**Routescan API** (`api.routescan.io`):
+**Routescan API** (`api.routescan.io`) - **Primary Data Source**:
 - Contract creation info (deployers, timestamps)
 - Contract ABIs and source code
 - Event logs with pagination (10,000 events per page)
 - Rate limits: 120 req/min, 10,000 req/day
+- **Why Routescan**: Indexed blockchain data is **orders of magnitude faster** than querying chain directly
+  - Event log queries: ~1-2 seconds vs hours of RPC calls scanning blocks
+  - ABI retrieval: Instant vs manual extraction from verified source code
+  - Pagination support: Handles large event sets (8,000+ positions) efficiently
+- **Attribution**: This verification package would not be practical without Routescan's indexed API infrastructure
 
-**Avalanche RPC** (`api.avax.network`):
+**Avalanche RPC** (`api.avax.network`) - **State Queries**:
 - Contract state reading via `eth_call`
 - Role verification (`hasRole()`)
 - Position queries (`getAllActivePositionIds()`)
 - Block number queries
+- Used for real-time state that Routescan doesn't index (function return values)
 
 ### Verification Methodology
 
