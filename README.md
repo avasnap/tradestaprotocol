@@ -63,28 +63,41 @@ Market (e.g., BTC/USD)
 ### 3. Hybrid Permission Model
 
 ```mermaid
-graph LR
-    subgraph "Whitelisted (2 Keepers)"
-        K1[Position Creation]
-        K2[Limit Order Execution]
-        K3[Funding Epoch Updates]
+graph TB
+    subgraph Actors
+        Trader[👤 Trader]
+        Keeper[🔑 Keeper<br/>Whitelisted]
+        Liquidator[⚡ Liquidator<br/>Anyone]
     end
 
-    subgraph "Permissionless (Anyone)"
-        L1[Price Liquidations]
-        L2[Funding Liquidations]
+    subgraph "Operations"
+        direction TB
+        CreatePos[Open Position]
+        ExecOrder[Execute Limit Order]
+        UpdateFunding[Update Funding Epoch]
+        PriceLiq[Price Liquidation]
+        FundingLiq[Funding Liquidation]
     end
 
-    Users --> K1
-    Users --> K2
-    Anyone --> L1
-    Anyone --> L2
+    Trader -.requests.-> Keeper
+    Keeper -->|✅ KEEPER_ROLE required| CreatePos
+    Keeper -->|✅ KEEPER_ROLE required| ExecOrder
+    Keeper -->|✅ KEEPER_ROLE required| UpdateFunding
 
-    style K1 fill:#fff4e1
-    style L1 fill:#e1ffe1
+    Liquidator -->|✅ No role required| PriceLiq
+    Liquidator -->|✅ No role required| FundingLiq
+
+    style CreatePos fill:#fff4e1
+    style ExecOrder fill:#fff4e1
+    style UpdateFunding fill:#fff4e1
+    style PriceLiq fill:#e1ffe1
+    style FundingLiq fill:#e1ffe1
+    style Keeper fill:#ffd700
 ```
 
-**Keepers mediate entry** (prevents MEV), **liquidators are permissionless** (decentralized risk management).
+**Entry is mediated** (keepers prevent MEV), **liquidations are permissionless** (decentralized risk management).
+
+**Key Insight**: Traders can't directly open positions - they must go through whitelisted keepers. But anyone can liquidate risky positions for profit.
 
 ### 4. Four-Contract Market Architecture
 
