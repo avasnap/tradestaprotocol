@@ -32,14 +32,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import sys
 import urllib.error
 import urllib.request
-from collections import OrderedDict
 from datetime import datetime, date, timezone
 from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent))
+from utils.chart import bucket_series, fmt_usd, maybe_write_png, render_ascii, write_csv
 
 DEFILLAMA_BASE = "https://api.llama.fi"
 DEFAULT_SLUG = "tradesta"
@@ -145,84 +146,6 @@ def fetch_daily_volume(slug: str) -> tuple[dict, list[tuple[date, float]]]:
 
 
 # --------------------------------------------------------------------------- #
-# Aggregation + rendering                                                      #
-# --------------------------------------------------------------------------- #
-def bucket(series: list[tuple[date, float]], granularity: str, since: date) -> "OrderedDict[str, float]":
-    """Sum volume into daily / weekly / monthly buckets, filtered to >= since."""
-    out: "OrderedDict[str, float]" = OrderedDict()
-    for day, vol in series:
-        if day < since:
-            continue
-        if granularity == "daily":
-            key = day.isoformat()
-        elif granularity == "weekly":
-            iso = day.isocalendar()
-            key = f"{iso[0]}-W{iso[1]:02d}"
-        else:  # monthly
-            key = f"{day.year}-{day.month:02d}"
-        out[key] = out.get(key, 0.0) + vol
-    return out
-
-
-def fmt_usd(value: float) -> str:
-    """Human-friendly USD with K/M/B suffix."""
-    for unit, suffix in ((1e9, "B"), (1e6, "M"), (1e3, "K")):
-        if abs(value) >= unit:
-            return f"${value / unit:,.2f}{suffix}"
-    return f"${value:,.0f}"
-
-
-def render_ascii(buckets: "OrderedDict[str, float]", title: str, width: int = 46) -> None:
-    """Render a horizontal ASCII bar chart of the buckets."""
-    print()
-    print(title)
-    print("-" * len(title))
-    if not buckets:
-        print("(no data in selected range)")
-        return
-    peak = max(buckets.values()) or 1.0
-    label_w = max(len(k) for k in buckets)
-    for key, vol in buckets.items():
-        bars = round(vol / peak * width) if vol > 0 else 0
-        bar = "#" * max(1, bars) if vol > 0 else ""
-        print(f"{key:<{label_w}} | {bar:<{width}} {fmt_usd(vol)}")
-
-
-def write_csv(path: Path, buckets: "OrderedDict[str, float]", period_header: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="") as handle:
-        writer = csv.writer(handle)
-        writer.writerow([period_header, "volume_usd"])
-        for key, vol in buckets.items():
-            writer.writerow([key, f"{vol:.2f}"])
-    print(f"Wrote {path}")
-
-
-def maybe_write_png(daily: list[tuple[date, float]], path: Path) -> None:
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        import matplotlib.dates as mdates
-    except ImportError:
-        print("(--png skipped: matplotlib not installed — `pip install matplotlib`)")
-        return
-    xs = [d for d, _ in daily]
-    ys = [v for _, v in daily]
-    fig, ax = plt.subplots(figsize=(11, 4.5))
-    ax.bar(xs, ys, width=1.0, color="#e84142")  # Avalanche red
-    ax.set_title("TradeSta — Daily Perp Volume (DefiLlama)")
-    ax.set_ylabel("Volume (USD)")
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
-    ax.yaxis.set_major_formatter(lambda v, _: fmt_usd(v))
-    fig.autofmt_xdate()
-    fig.tight_layout()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=120)
-    print(f"Wrote {path}")
-
-
-# --------------------------------------------------------------------------- #
 # Main                                                                         #
 # --------------------------------------------------------------------------- #
 def main() -> None:
@@ -268,13 +191,14 @@ def main() -> None:
         print(f"Peak day     : {peak_day}  {fmt_usd(peak_val)}")
         print(f"Latest day   : {windowed[-1][0]}  {fmt_usd(windowed[-1][1])}")
 
-    buckets = bucket(series, args.granularity, since)
+    buckets = bucket_series(series, args.granularity, since)
     render_ascii(buckets, f"Volume by {args.granularity} since {since}")
 
     if args.csv:
         write_csv(Path(args.csv), buckets, args.granularity)
     if args.png:
-        maybe_write_png(windowed, Path("results") / "tradesta_volume_daily.png")
+        maybe_write_png(windowed, Path("results") / "tradesta_volume_daily.png",
+                        "TradeSta — Daily Perp Volume (DefiLlama)")
 
 
 if __name__ == "__main__":
